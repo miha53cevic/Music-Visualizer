@@ -19,7 +19,8 @@ private:
 protected:
 	bool virtual OnUserCreate()
 	{
-		if (!buffer.loadFromFile("Eminem - Mockingbird [HQ].wav"))
+		// Load music
+		if (!buffer.loadFromFile("Imagine Dragons Believer (8D AUDIO).wav"))
 		{
 			// Error
 		}
@@ -34,13 +35,15 @@ protected:
 
 	bool virtual OnUserUpdate(sf::Time elapsed)
 	{
-		fft.visualFFT(&buffer, &sound, 1024);
+		const int sampleRate = 1024;
+
+		fft.visualFFT(&buffer, &sound, sampleRate);
 		
 		int k = 0;
 		while (k < (int)(ScreenWidth() / rectSize))
 		{
 			// Get amplitude of signal through pitagorin poucak
-			int height = fft.getMagnitude(k) / 1024;
+			int height = fft.getMagnitude(k) / sampleRate;
 
 			sf::RectangleShape rect;
 			rect.setSize(sf::Vector2f(rectSize, height));
@@ -51,36 +54,20 @@ protected:
 			k++;
 		}
 
-		// In the middle going up and down
-		/*int k = 0;
-		while (k < (int)(ScreenWidth() / rectSize))
-		{
-			// Get amplitude of signal through pitagorin poucak
-			int height = fft.getMagnitude(k) / 1024;
-
-			sf::RectangleShape rect;
-			rect.setSize(sf::Vector2f(rectSize, height));
-			rect.setPosition(k * rectSize, (ScreenHeight() / 2 - 1) - height);
-
-			Draw(rect);
-
-			k++;
-		}*/
-
 		// Circle pulsating
 		float average = 0;
-		for (int i = 0; i < 1024; i++)
+		for (int i = 0; i < sampleRate; i++)
 		{
 			average += fft.getMagnitude(i);
 		}
-		average /= 1024;
-		average /= 1024;
+		average /= sampleRate;
+		average /= sampleRate;
 
 		sf::CircleShape circle;
 		circle.setRadius(average);
 		circle.setOrigin(circle.getRadius(), circle.getRadius());
 		circle.setPosition(ScreenWidth() / 2, ScreenHeight() / 2);
-
+		
 		Draw(circle);
 
 		return true;

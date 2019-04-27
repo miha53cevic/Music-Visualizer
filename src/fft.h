@@ -55,7 +55,7 @@ public:
 		{
 			// Pitagorin poucak
 			int magnitude = sqrtf(bin[i].real() * bin[i].real() + bin[i].imag() * bin[i].imag());
-			//int magnitude = bin[i].real(); // In the middle going up and down
+		
 			magnitudes.push_back(magnitude);
 		}
 	}
