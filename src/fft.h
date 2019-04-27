@@ -47,6 +47,13 @@ public:
 			bin[i] = buffer->getSamples()[i + (int)(sound->getPlayingOffset().asSeconds() * buffer->getSampleRate())];
 		}
 
+		// Hamming Window - bin
+		// Smooths transition spikes of magnitues
+		for (int i = 0; i < sampleRate; i++) {
+			double multiplier = 0.5 * (1 - cosf(2 * PI*i / (sampleRate - 1)));
+			bin[i] *= multiplier;
+		}
+
 		// Run FFT algorithm
 		fft(bin);
 

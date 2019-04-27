@@ -1,4 +1,4 @@
-#include <SFML/Graphics.hpp>
+﻿#include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include "mihaSimpleSFML.h"
 
@@ -20,14 +20,14 @@ protected:
 	bool virtual OnUserCreate()
 	{
 		// Load music
-		if (!buffer.loadFromFile("Imagine Dragons Believer (8D AUDIO).wav"))
+		if (!buffer.loadFromFile("Coolio - Gangsta's Paradise [Original] [HD Sound].wav"))
 		{
 			// Error
 		}
 
 		// Play music
 		sound.setBuffer(buffer);
-		sound.setVolume(30);
+		sound.setVolume(50);
 		sound.play();
 		
 		return true;
@@ -35,7 +35,7 @@ protected:
 
 	bool virtual OnUserUpdate(sf::Time elapsed)
 	{
-		const int sampleRate = 1024;
+		const int sampleRate = 2048;
 
 		fft.visualFFT(&buffer, &sound, sampleRate);
 		
@@ -43,7 +43,8 @@ protected:
 		while (k < (int)(ScreenWidth() / rectSize))
 		{
 			// Get amplitude of signal through pitagorin poucak
-			int height = fft.getMagnitude(k) / sampleRate;
+			//int height = fft.getMagnitude(k) / sampleRate;
+			int height = 20 * logf(fft.getMagnitude(k)); // Get magnitude_DB
 
 			sf::RectangleShape rect;
 			rect.setSize(sf::Vector2f(rectSize, height));
