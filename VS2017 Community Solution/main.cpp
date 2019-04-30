@@ -1,9 +1,16 @@
+/*
+// Made by: Mihael Petrièeviæ
+// Date: 27.4.2019 ---> 30.4.2019.
+*/
+
 #include "mihaSimpleSFML.h"
 
 #include <SFML/Audio.hpp>
-#include <iostream>
+#include <fstream>
 
 #include "FFT.h"
+
+bool vsync = false;
 
 class FFTWApp : public mihaSimpleSFML
 {
@@ -20,13 +27,17 @@ private:
 
 	std::string songPath;
 
-	const int rectSize = 4;
+	float maxFreq = 1.0f;
 
 protected:
 	bool virtual OnUserCreate()
 	{
 		// Song path when .wav file dropped on .exe
-		std::cout << songPath;
+		printf("%s\n", songPath.c_str());
+
+		// V-Sync
+		EnableVSync(vsync);
+		printf("V-Sync is %s", (vsync) ? "enabled" : "disabled");
 
 		// Load music
 		if (!buffer.loadFromFile(songPath))
@@ -46,45 +57,46 @@ protected:
 	{
 		fft.visual_FFTW(&buffer, &sound);
 
-		int k = 0;
-		while (k < (int)(ScreenWidth() / rectSize))
+		sf::VertexArray sinWave;
+		sinWave.setPrimitiveType(sf::LineStrip);
+
+		sf::VertexArray logWave;
+		logWave.setPrimitiveType(sf::LineStrip);
+
+		// Signal nakon hamming windowa
+		for (int k = 0; k < N; k++)
 		{
-			// Get amplitude of signal through pitagorin poucak
-			int height = fft.getMagnitude(k) / N;
-			int height2 = 20 * logf(fft.getMagnitude(k)); // Get magnitude_DB
+			// Plot only REAL part of the complex number
+			float height = fft.getInput(k, REAL);
 
-			sf::RectangleShape rect;
-			rect.setSize(sf::Vector2f(rectSize, height));
-			rect.setPosition(k * rectSize, (ScreenHeight() / 2 - 1) - height);
+			// Scale factor
+			height = map(height, -N, N, -ScreenHeight() / 8, ScreenHeight() / 8);
 
-			Draw(rect);
-
-			rect.setSize(sf::Vector2f(rectSize, height2));
-			rect.setPosition(k * rectSize, (ScreenHeight() - 1) - height2);
-
-			Draw(rect);
-
-			k++;
+			float x = map(k, 0, N, 0, ScreenWidth() - 1);
+			sinWave.append(sf::Vertex(sf::Vector2f(x, (ScreenHeight() / 4 - 1) - height), sf::Color::White));
 		}
 
-		// Circle pulsating
-		float average = 0;
-		for (int i = 0; i < N; i++)
+		// Draw Magnitude power
+		for (int i = 0; i < fft.vecMagnitudes.size(); i++)
 		{
-			average += fft.getMagnitude(i);
+			float height = fft.getMagnitude(i);
+
+			// Get max magnitude
+			if (maxFreq < height) maxFreq = height;
+
+			// Scale factor
+			height = map(height, 0, maxFreq, 0, ScreenHeight() / 2);
+			
+			float x = map(i, 0, fft.vecMagnitudes.size() - 1, ScreenWidth() / 10, ScreenWidth() - ScreenWidth() / 10 - 1);
+			logWave.append(sf::Vertex(sf::Vector2f(x, (ScreenHeight() - ScreenHeight() / 10) - height), sf::Color::Red));
 		}
-		average /= N;
-		average /= N;
 
-		sf::CircleShape circle;
-		circle.setRadius(average);
-		circle.setOrigin(circle.getRadius(), circle.getRadius());
-		circle.setPosition(ScreenWidth() / 2, ScreenHeight() / 2);
-
-		Draw(circle);
-
+		// Draw both waves
+		Draw(sinWave);
+		Draw(logWave);
+		
 		// If song ended exit
-		if (sound.getStatus() == sound.Stopped)
+		if (sound.getPlayingOffset() >= buffer.getDuration())
 		{
 			return false;
 		}
@@ -98,8 +110,33 @@ int main(int argc, char* argv[])
 	if (argc != 2)
 		return -1;
 	
+	// Setting resolution through settings.txt file
+	std::ifstream reader("settings.txt");
+	sf::Vector2u resolution(640, 720);
+
+	int i = 0;
+	std::string line;
+	while (std::getline(reader, line))
+	{
+		if (line == "resolution")
+		{
+			int val;
+			reader >> val;
+			resolution.x = val;
+			reader >> val;
+			resolution.y = val;
+		}
+		else if (line == "V-Sync")
+		{
+			std::string val;
+			reader >> val;
+			if (val == "true")
+				vsync = true;
+		}
+	}
+
 	FFTWApp app(argv[1]);
-	app.Construct(1280, 720, L"FFTW Visualization");
+	app.Construct(resolution.x, resolution.y, L"FFTW Visualization");
 	app.Start();
 
 	return 0;
