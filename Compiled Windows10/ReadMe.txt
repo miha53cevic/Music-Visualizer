@@ -1,1 +1,0 @@
-Drag and drop a .wav/.ogg file on top of the .exe and enjoy! :)
