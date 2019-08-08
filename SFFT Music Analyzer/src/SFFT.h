@@ -1,7 +1,8 @@
 //
 // Author: Mihael Petricevic
 // Contact: miha53cevic@gmail.com
-// Date: 17.7.2019.
+// Originaly made: 17.7.2019.
+// Updated: 8.8.2019.
 //
 // FFT redux
 //
@@ -12,7 +13,7 @@
 #include <vector>
 
 #ifndef N
-	#define N 16384
+#define N 16384
 #endif // !N
 
 #define REAL 0
@@ -24,19 +25,17 @@
 class SFFT
 {
 public:
-	SFFT();
+    SFFT();
 
-	void sfft(sf::SoundBuffer* buffer, sf::Sound* player);
+    void sfft(sf::SoundBuffer* buffer, sf::Sound* player);
 
-	std::vector<float> getOutput(int REALorIMAG);
-	float getMagnitude(int index);
-	float getWindow(int index);
+    float getMagnitude(int index);
+    float getWindow(int index);
 
 private:
-	void hammingWindow(double* buffer);
-	void calculate_fft(fftw_complex* input, fftw_complex* output);
+    void hammingWindow(double* buffer);
+    void calculate_fft(fftw_complex* input, fftw_complex* output);
 
-	std::vector<std::pair<float, float>> m_output;
-	std::vector<float> m_window;
-	std::vector<float> m_magnitudes;
+    std::vector<float> m_window;
+    std::vector<float> m_magnitudes;
 };

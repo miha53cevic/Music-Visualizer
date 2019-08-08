@@ -1,7 +1,8 @@
 //
 // Author: Mihael Petricevic
 // Contact: miha53cevic@gmail.com
-// Date: 17.7.2019.
+// Originaly made: 17.7.2019.
+// Updated: 8.8.2019.
 //
 // FFT redux
 //
@@ -15,134 +16,149 @@
 class demo : public mihaSimpleSFML
 {
 public:
-	demo(std::string songPath) 
-	{
-		// Load song
-		if (!buffer.loadFromFile(songPath))
-		{
-			// Error
-		}
-		else std::cout << "Loaded " + songPath + "\n";
-	}
+    demo(std::string songPath, unsigned int QUAD_SIZE)
+    {
+        // Load song
+        if (!buffer.loadFromFile(songPath))
+        {
+            // Error
+        }
+        else std::cout << "Loaded " + songPath + "\n";
+
+        this->QUAD_SIZE = QUAD_SIZE;
+    }
 
 private:
-	SFFT sfft;
-	sf::SoundBuffer buffer;
-	sf::Sound player;
+    SFFT sfft;
+    sf::SoundBuffer buffer;
+    sf::Sound player;
 
-	void DrawRectangle(sf::Vector2f pos, sf::Vector2i size, sf::Color c)
-	{
-		sf::RectangleShape shape;
-		shape.setFillColor(c);
-		shape.setPosition(pos);
-		shape.setSize(sf::Vector2f(size.x, size.y));
+    unsigned int QUAD_SIZE;
 
-		Draw(shape);
-	}
+    void DrawRectangle(sf::Vector2f pos, sf::Vector2i size, sf::Color c)
+    {
+        sf::RectangleShape shape;
+        shape.setFillColor(c);
+        shape.setPosition(pos);
+        shape.setSize(sf::Vector2f(size.x, size.y));
+        shape.setOutlineColor(sf::Color::Black);
+        shape.setOutlineThickness(1);
+
+        Draw(shape);
+    }
 
 protected:
-	virtual bool OnUserCreate()
-	{
-		// Start the music
-		player.setBuffer(buffer);
-		player.play();
+    virtual bool OnUserCreate()
+    {
+        EnableVSync(true);
 
-		player.setVolume(20.0f);
+        // Start the music
+        player.setBuffer(buffer);
+        player.play();
 
-		std::cout << "Song sample rate is " << buffer.getSampleRate() << std::endl;
+        player.setVolume(20.0f);
 
-		return true;
-	}
+        std::cout << "Song sample rate is " << buffer.getSampleRate() << std::endl;
+        std::cout << "Song channels count is " << buffer.getChannelCount() << std::endl;
 
-	virtual bool OnUserUpdate(sf::Time elapsed)
-	{
-		// Calculate SFFT
-		sfft.sfft(&buffer, &player);
+        return true;
+    }
 
-		sf::VertexArray window_wave;
-		window_wave.setPrimitiveType(sf::PrimitiveType::LineStrip);
+    virtual bool OnUserUpdate(sf::Time elapsed)
+    {
+        // Calculate SFFT
+        sfft.sfft(&buffer, &player);
 
-		for (int i = 0; i < N; i++)
-		{
-			// Plot only REAL part of the complex number
-			float height = sfft.getWindow(i);
+        sf::VertexArray wave;
+        wave.setPrimitiveType((sf::PrimitiveType::LineStrip));
 
-			// Scale factor
-			height = map(height, -N, N, -ScreenHeight() / 8, ScreenHeight() / 8);
+        // Plot wave
+        // nqyuist is the N/2th freq
+        // freq = i * sampleRate / N
+        float nqyuist = (N / 2) * (buffer.getChannelCount() * buffer.getSampleRate()) / N;
 
-			float x = map(i, 0, N, 0, ScreenWidth() - 1);
-			window_wave.append(sf::Vertex(sf::Vector2f(x, (ScreenHeight() / 4 - 1) - height), sf::Color::White));
-		}
+        // Where to see the freq_bin values
+        // https://www.teachmeaudio.com/mixing/techniques/audio-spectrum/
+        std::vector<float> freq_bin = { 20, 60, 250, 500/*, 2000, 4000, 6000, nqyuist*/ };
+        std::vector<float> peakmaxArray/*(freq_bin.size() - 1, -INFINITY)*/;
 
-		sf::VertexArray wave;
-		wave.setPrimitiveType((sf::PrimitiveType::LineStrip));
+        for (int x = 0; x < N / 2 + 1; x++)
+        {
+            float freq = x * (buffer.getChannelCount() * buffer.getSampleRate()) / N;
+            float magnitude = sfft.getMagnitude(x);
 
-		// Find max magnitude
-		float maxMagnitude = 0;
+            float xPos = map(x, 0, (N / 2) + 1, ScreenWidth() * 0.2, ScreenWidth() * 0.8);
+            float yPos = magnitude * 0.000005f;
 
-		for (int i = 0; i < N / 2 + 1; i++)
-		{
-			if (sfft.getMagnitude(i) > maxMagnitude)
-				maxMagnitude = sfft.getMagnitude(i);
-		}
+            for (int i = 0; i < freq_bin.size() - 1; i++)
+            {
+                if ((freq > freq_bin[i]) && (freq <= freq_bin[i + 1])) {
+                    /*if (magnitude > peakmaxArray[i]) {
+                        peakmaxArray[i] = magnitude;
+                    }*/
+                    peakmaxArray.push_back(magnitude);
+                }
+            }
 
-		// Plot wave
-		for (int x = 0; x < N / 2 + 1; x++)
-		{
-			float magnitude = sfft.getMagnitude(x);
+            wave.append(sf::Vertex(sf::Vector2f(xPos, (ScreenHeight() * 0.9) - yPos), sf::Color::Red));
+        }
 
-			float xPos = map(x, 0, (N / 2) + 1, ScreenWidth() * 0.2, ScreenWidth() * 0.8);
-			float yPos = map(magnitude / maxMagnitude, 0, 1, 0, ScreenHeight() / 2);
-			//float yPos = 10 * logf(magnitude);
+        for (int i = 0; i < peakmaxArray.size(); i++)
+        {
+            float x = i * QUAD_SIZE + ((ScreenWidth() / 2) - (peakmaxArray.size() * QUAD_SIZE / 2));
+            float y = ScreenHeight() / 3;
 
-			wave.append(sf::Vertex(sf::Vector2f(xPos, (ScreenHeight() * 0.9) - yPos), sf::Color::Red));
-		}
+            float height = peakmaxArray[i] * 0.0000025f;
+            
+            DrawRectangle({ x, y }, { (int)QUAD_SIZE, (int)(-height) }, sf::Color::Blue);
+        }
 
-		Draw(wave);
-		Draw(window_wave);
+        Draw(wave);
 
-		return true;
-	}
+        return true;
+    }
 
 };
 
 int main(int argc, char** argv)
 {
-	if (argc == 2)
-	{
-		// Load settings from config.cfg
-		std::ifstream reader("settings.cfg");
-		sf::Vector2u resolution(1280, 720);
+    if (argc == 2)
+    {
+        // Load settings from config.cfg
+        std::ifstream reader("settings.cfg");
+        sf::Vector2u resolution(1280, 720);
+        unsigned int QUAD_SIZE;
 
-		if (!reader.fail())
-		{
-			int i = 0;
-			std::string line;
-			while (std::getline(reader, line))
-			{
-				if (line == "resolution")
-				{
-					int val;
-					reader >> val;
-					resolution.x = val;
-					reader >> val;
-					resolution.y = val;
-				}
-			}
+        if (!reader.fail())
+        {
+            int i = 0;
+            std::string line;
+            while (std::getline(reader, line))
+            {
+                if (line == "resolution")
+                {
+                    reader >> resolution.x;
+                    reader >> resolution.y;
+                }
+                else if (line == "QUAD_SIZE")
+                {
+                    reader >> QUAD_SIZE;
+                }
+            }
 
-			reader.close();
-		}
-		else std::cout << "Could not find settings.cfg running default settings" << std::endl;
+            reader.close();
+        }
+        else std::cout << "Could not find settings.cfg running default settings" << std::endl;
 
-		demo Test(argv[1]);
-		Test.Construct(resolution.x, resolution.y, L"SFFT Analyzer");
-		Test.Start();
-	}
-	else
-	{
-		std::cout << "No music given!\nDrag and drop a .wav file on the exe\n";
-		system("pause");
-	}
+        demo Test(argv[1], QUAD_SIZE);
+        Test.Construct(resolution.x, resolution.y, L"SFFT Analyzer");
+        Test.Start();
+    }
+    else
+    {
+        std::cout << "No music given!\nDrag and drop a .wav file on the exe\n";
+        system("pause");
+    }
 
-	return 0;
+    return 0;
 }
