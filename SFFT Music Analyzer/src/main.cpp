@@ -48,26 +48,57 @@ private:
     }
 
 protected:
-    virtual bool OnUserCreate()
+    virtual void Event(sf::Event e) override
     {
+        if (e.type == sf::Event::KeyPressed)
+        {
+            if (e.key.code == sf::Keyboard::Key::Up)
+            {
+                player.setVolume(player.getVolume() + 10);
+            }
+            else if (e.type == sf::Event::KeyPressed && e.key.code == sf::Keyboard::Key::Down)
+            {
+                player.setVolume(player.getVolume() - 10);
+            }
+
+            // Set maximum and minimum
+            if      (player.getVolume() > 100)  player.setVolume(100);
+            else if (player.getVolume() < 0)    player.setVolume(0);
+
+            std::cout << "Changed volume to " << player.getVolume() << std::endl;
+        }
+    }
+
+protected:
+    virtual bool OnUserCreate() override
+    {
+        // Enable VSYNC
         EnableVSync(true);
 
         // Start the music
         player.setBuffer(buffer);
         player.play();
 
+        // Set volume
         player.setVolume(20.0f);
 
+        // Display song info
         std::cout << "Song sample rate is " << buffer.getSampleRate() << std::endl;
-        std::cout << "Song channels count is " << buffer.getChannelCount() << std::endl;
+        std::cout << "Song channel count is " << buffer.getChannelCount() << std::endl;
+
+        std::cout << "Controls:\n\tUP ARROW --> Volume UP\n\tDOWN ARROW --> Volume DOWN" << std::endl;
 
         return true;
     }
 
-    virtual bool OnUserUpdate(sf::Time elapsed)
+    virtual bool OnUserUpdate(sf::Time elapsed) override
     {
         // Calculate SFFT
         sfft.sfft(&buffer, &player);
+
+        // If song is over exit
+        if (player.getStatus() == sf::Sound::Status::Stopped)
+            return false;
 
         sf::VertexArray wave;
         wave.setPrimitiveType((sf::PrimitiveType::LineStrip));
@@ -127,7 +158,7 @@ int main(int argc, char** argv)
         // Load settings from config.cfg
         std::ifstream reader("settings.cfg");
         sf::Vector2u resolution(1280, 720);
-        unsigned int QUAD_SIZE;
+        unsigned int QUAD_SIZE = 8;
 
         if (!reader.fail())
         {
@@ -149,7 +180,7 @@ int main(int argc, char** argv)
             reader.close();
         }
         else std::cout << "Could not find settings.cfg running default settings" << std::endl;
-
+        
         demo Test(argv[1], QUAD_SIZE);
         Test.Construct(resolution.x, resolution.y, L"SFFT Analyzer");
         Test.Start();

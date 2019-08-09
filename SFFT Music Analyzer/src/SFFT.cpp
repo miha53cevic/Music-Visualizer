@@ -42,8 +42,12 @@ void SFFT::sfft(sf::SoundBuffer* buffer, sf::Sound* player)
     {
         int sampleIndex = i + mark;
 
+        // If there are no more samples stop the music and return
         if (sampleIndex >= buffer->getSampleCount() - 1)
+        {
+            player->stop();
             return;
+        }
 
         // Window the sample / signal data
         input[i][REAL] = buffer->getSamples()[sampleIndex] * window[i];
